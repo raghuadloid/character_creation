@@ -3,13 +3,9 @@ import uvicorn
 import numpy as np
 from io import BytesIO
 from PIL import Image
-import tensorflow
 import cv2
-import mediapipe as mp
 from sklearn.cluster import KMeans
-from statistics import median, mean
 from collections import Counter
-import colorsys
 
 app = FastAPI()
 
@@ -17,130 +13,54 @@ app = FastAPI()
 async def ping():
     return "Hello, I am alive"
 
-# def palette_dict(k_cluster):
-#     n_pixels = len(k_cluster.labels_)
-#     counter = Counter(k_cluster.labels_) # count how many pixels per cluster
-#     perc = {}
-#     for i in counter:
-#         perc[i] = np.round(counter[i]/n_pixels, 2)
-#     perc = dict(sorted(perc.items()))
-#     return [perc, (k_cluster.cluster_centers_)]
+def palette_dict(k_cluster):
+    n_pixels = len(k_cluster.labels_)
+    counter = Counter(k_cluster.labels_) # count how many pixels per cluster
+    perc = {}
+    for i in counter:
+        perc[i] = np.round(counter[i]/n_pixels, 2)
+    perc = dict(sorted(perc.items(), key=lambda p: p[1], reverse=True))
+    return [perc, (k_cluster.cluster_centers_)]
 
-def test():
-    mp_face_mesh = mp.solutions.face_mesh
-    return mp_face_mesh.FaceMesh(static_image_mode=True, max_num_faces=1, min_detection_confidence=0.5)
+def weighted_mean_colors(c1, w1, c2, w2):
+  amount = [w1, w2]
+  d1 = np.average([c1[0], c2[0]], weights=amount)
+  d2 = np.average([c1[1], c2[1]], weights=amount)
+  d3 = np.average([c1[2], c2[2]], weights=amount)
+  return [d1, d2, d3]
+
 
 def preprocess_image(data):
     img = np.array(Image.open(BytesIO(data)))
-    n_clusters = 3
-    mp_face_mesh = mp.solutions.face_mesh
-    face_mesh = test()
-
-    results = face_mesh.process(img)
-    annotated_image = img.copy()
-    return annotated_image
-
-
-    #     #Right Cheek
-    #     x_points = []
-    #     y_points = []
-    #     for r in [348, 411, 358, 410]: 
-    #         x = results.multi_face_landmarks[0].landmark[r].x
-    #         y = results.multi_face_landmarks[0].landmark[r].y
-    #         shape = img.shape 
-    #         relative_x = int(x * shape[1])
-    #         x_points.append(relative_x)
-    #         relative_y = int(y * shape[0])
-    #         y_points.append(relative_y)
-    #     x_min = min(x_points)
-    #     y_min = min(y_points)
-    #     x_max = max(x_points)
-    #     y_max = max(y_points)
-    #     crop_img = annotated_image[y_min:y_max, x_min:x_max]
-    #     clt = KMeans(n_clusters)
-    #     clt_1 = clt.fit(crop_img.reshape(-1,3))
-    #     n_pixels = len(clt_1.labels_)
-    #     counter = Counter(clt_1.labels_)
-    #     perc = {}
-    #     for i in counter:
-    #         perc[i] = np.round(counter[i]/n_pixels, 2)
-    #     perc = dict(sorted(perc.items()))
-    #     Keymax = max(zip(perc.values(), perc.keys()))[1]
-    #     dom_color1 = (clt_1.cluster_centers_[Keymax]).tolist()
-    #     dom_color1_weight = perc[Keymax]
-
-
-    #     #Left Cheek
-    #     x_points = []
-    #     y_points = []
-    #     for r in [119, 187, 129, 186]: 
-    #         x = results.multi_face_landmarks[0].landmark[r].x
-    #         y = results.multi_face_landmarks[0].landmark[r].y
-    #         shape = img.shape 
-    #         relative_x = int(x * shape[1])
-    #         x_points.append(relative_x)
-    #         relative_y = int(y * shape[0])
-    #         y_points.append(relative_y)
-    #     x_min = min(x_points)
-    #     y_min = min(y_points)
-    #     x_max = max(x_points)
-    #     y_max = max(y_points)
-    #     crop_img = annotated_image[y_min:y_max, x_min:x_max]
-    #     clt = KMeans(n_clusters)
-    #     clt_1 = clt.fit(crop_img.reshape(-1,3))
-    #     n_pixels = len(clt_1.labels_)
-    #     counter = Counter(clt_1.labels_)
-    #     perc = {}
-    #     for i in counter:
-    #         perc[i] = np.round(counter[i]/n_pixels, 2)
-    #     perc = dict(sorted(perc.items()))
-    #     Keymax = max(zip(perc.values(), perc.keys()))[1]
-    #     dom_color2 = (clt_1.cluster_centers_[Keymax]).tolist()
-    #     dom_color2_weight = perc[Keymax]
-
-
-    #     #Forehead
-    #     x_points = []
-    #     y_points = []
-    #     for r in [107, 109, 336, 338]: 
-    #         x = results.multi_face_landmarks[0].landmark[r].x
-    #         y = results.multi_face_landmarks[0].landmark[r].y
-    #         shape = img.shape 
-    #         relative_x = int(x * shape[1])
-    #         x_points.append(relative_x)
-    #         relative_y = int(y * shape[0])
-    #         y_points.append(relative_y)
-    #     x_min = min(x_points)
-    #     y_min = min(y_points)
-    #     x_max = max(x_points)
-    #     y_max = max(y_points)
-    #     crop_img = annotated_image[y_min:y_max, x_min:x_max]
-    #     clt = KMeans(n_clusters)
-    #     clt_1 = clt.fit(crop_img.reshape(-1,3))
-    #     n_pixels = len(clt_1.labels_)
-    #     counter = Counter(clt_1.labels_)
-    #     perc = {}
-    #     for i in counter:
-    #         perc[i] = np.round(counter[i]/n_pixels, 2)
-    #     perc = dict(sorted(perc.items()))
-    #     Keymax = max(zip(perc.values(), perc.keys()))[1]
-    #     dom_color3 = (clt_1.cluster_centers_[Keymax]).tolist()
-    #     dom_color3_weight = perc[Keymax]
-
-    #     amounts = [dom_color1_weight, dom_color2_weight, 2*dom_color3_weight]
-    #     d1 = np.average([dom_color1[0], dom_color2[0], dom_color3[0]], weights=amounts)
-    #     d2 = np.average([dom_color1[1], dom_color2[1], dom_color3[1]], weights=amounts)
-    #     d3 = np.average([dom_color1[2], dom_color2[2], dom_color3[2]], weights=amounts)
-    # return np.array([d1, d2, d3])
-    # return img
+    n_clusters = 4
+    cut = 30
+    img = cv2.resize(img, (512,512))
+    face_cascade = cv2.CascadeClassifier('haarcascade_frontalface_default.xml')
+    gray = cv2.cvtColor(img, cv2.COLOR_RGB2GRAY)
+    faces = face_cascade.detectMultiScale(gray, 1.1,6)
+    crop_img = img[faces[0][1]:faces[0][1]+faces[0][3], faces[0][0]:faces[0][0]+faces[0][2]]
+    crop_img = cv2.resize(crop_img, (256,256))
+    crop_img = crop_img[cut:crop_img.shape[1]-cut, cut:crop_img.shape[0]-cut]
+    clt = KMeans(n_clusters) 
+    clt_1 = clt.fit(crop_img.reshape(-1,3)) 
+    lis = palette_dict(clt_1)
+    col1 = lis[1][list(lis[0])[0]]
+    if col1[0] < 50 and col1[1] < 50 and col1[2] < 50:
+        return str([140,95,65])
+    col2 = lis[1][list(lis[0])[1]]
+    if col2[0] < 50 and col2[1] < 50 and col2[2] < 50:
+        return str([140,95,65])
+    w1 = list(lis[0].values())[0]
+    w2 = list(lis[0].values())[1]
+    values = weighted_mean_colors(col1, w1, col2, w2)
+    return str(values)
 
 @app.post("/predict")
 async def predict(file: UploadFile = File(...)):
     colors = preprocess_image(await file.read())
-    # rt_str = str(colors)
 
     return {
-        "red": colors.shape
+        "red": colors
     }
 
 if __name__ == "__main__":
